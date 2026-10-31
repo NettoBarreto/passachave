@@ -31,6 +31,8 @@ Em organizações sociais, os veículos são usados por funcionários e voluntá
 | RF09 | Manutenção prevista e realizada por veículo | `src/gestor.jsx` (Manutencao) |
 | RF10 | Histórico com filtros e exportação para planilha | `src/gestor.jsx` (Historico, FichaVeiculo) |
 
+Interface: layout de computador com menu lateral e layout de celular com barra inferior, tema claro, escuro ou do sistema.
+
 Complementos: fotos obrigatórias ou opcionais por configuração, aprovação dos registros pela responsável, alertas automáticos (CNH, licenciamento, seguro e revisão por km ou data), consumo médio em km/l e custos por veículo.
 
 Fora da primeira versão: reconhecimento facial, rastreamento contínuo, integração com equipamentos do veículo e previsão de falhas.
@@ -56,6 +58,8 @@ Nesta versão de teste os dados ficam guardados no navegador de quem usa (Indexe
 - Dexie (IndexedDB) para guardar os dados e as fotos no aparelho
 - PWA: manifesto e service worker para instalar no celular e abrir sem internet
 - qrcode para gerar as etiquetas dos chaveiros
+- lucide-react para os ícones
+- Playwright para os testes de ponta a ponta
 - GitHub Actions e GitHub Pages para publicar
 
 ## Estrutura do código
@@ -72,10 +76,12 @@ passachave/
 │   ├── App.jsx                login, rotas e layouts (celular e computador)
 │   ├── db.js                  banco local, contas de teste, configurações e fotos
 │   ├── util.js                formatação, alertas automáticos e cálculo de consumo
+│   ├── tema.js                tema claro, escuro ou do sistema
 │   ├── ui.jsx                 componentes compartilhados (foto, modal, etiquetas)
 │   ├── condutor.jsx           telas do condutor: retirada, uso, abastecimento, ocorrência, devolução
 │   ├── gestor.jsx             telas da responsável: painel, aprovação, veículos, usuários, manutenção, histórico
-│   └── styles.css             estilos
+│   └── styles.css             estilos, tema escuro e layout de celular
+├── tests/app.spec.js          testes de ponta a ponta (fluxos, layout e tema)
 └── .github/workflows/pages.yml  publicação automática no GitHub Pages
 ```
 
@@ -87,6 +93,14 @@ npm run dev
 ```
 
 Para gerar a versão de produção: `npm run build` (saída em `dist/`).
+
+## Testes
+
+```bash
+npm test
+```
+
+Os testes usam o Chrome instalado e rodam em três tamanhos de tela (computador, notebook e celular). Eles cobrem o fluxo completo de retirada, abastecimento, ocorrência, devolução e aprovação, os cadastros, a troca de tema e conferem que nenhuma tela fica cortada nos temas claro e escuro. As capturas de cada tela ficam em `test-results/telas/`.
 
 ## Equipe
 

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, Download, ExternalLink, FileText, Fuel, IdCard, KeyRound, Plus, Printer, ShieldCheck, Wrench } from 'lucide-react'
 import QRCode from 'qrcode'
 import { db, hashSenha, restaurarDemonstracao, salvarConfig } from './db.js'
-import { Foto, Modal, Pill, Vazio, useDados } from './ui.jsx'
+import { Foto, Modal, PageHeader, Pill, Vazio, useDados } from './ui.jsx'
 import { NIVEIS_COMBUSTIVEL, baixarCsv, hoje, calcularAlertas, consumo, data, dataHora, duracao, km, mesmoMes, reais } from './util.js'
+
+const ICONES_ALERTA = { cnh: IdCard, documento: FileText, seguro: ShieldCheck, revisao: Wrench, agenda: CalendarClock, ocorrencia: AlertTriangle }
 
 const nomeVeiculo = (veiculos, id) => { const v = veiculos.find(x => x.id === id); return v ? `${v.modelo} · ${v.placa}` : 'veículo removido' }
 const nomeUsuario = (usuarios, id) => usuarios.find(x => x.id === id)?.nome || 'usuário removido'
@@ -22,19 +25,19 @@ export function Painel({ ir }) {
   const kml = consumo(usosMes, abastMes)
   const conta = s => veiculos.filter(v => v.situacao === s).length
   const recentes = [
-    ...usos.map(u => ({ q: u.inicio, t: `🔑 ${nomeUsuario(usuarios, u.condutorId).split(' ')[0]} retirou ${nomeVeiculo(veiculos, u.veiculoId)}` })),
-    ...usos.filter(u => u.fim).map(u => ({ q: u.fim, t: `✅ ${nomeUsuario(usuarios, u.condutorId).split(' ')[0]} devolveu ${nomeVeiculo(veiculos, u.veiculoId)} · ${km(u.kmFinal - u.kmInicial)}` })),
-    ...abastecimentos.map(a => ({ q: a.data, t: `⛽ ${nomeUsuario(usuarios, a.condutorId).split(' ')[0]} abasteceu ${a.litros} L · ${reais(a.valor)}` })),
-    ...ocorrencias.map(o => ({ q: o.data, t: `⚠️ Ocorrência: ${o.tipo} · ${nomeVeiculo(veiculos, o.veiculoId)}` }))
+    ...usos.map(u => ({ q: u.inicio, i: KeyRound, t: `${nomeUsuario(usuarios, u.condutorId).split(' ')[0]} retirou ${nomeVeiculo(veiculos, u.veiculoId)}` })),
+    ...usos.filter(u => u.fim).map(u => ({ q: u.fim, i: CheckCircle2, t: `${nomeUsuario(usuarios, u.condutorId).split(' ')[0]} devolveu ${nomeVeiculo(veiculos, u.veiculoId)} · ${km(u.kmFinal - u.kmInicial)}` })),
+    ...abastecimentos.map(a => ({ q: a.data, i: Fuel, t: `${nomeUsuario(usuarios, a.condutorId).split(' ')[0]} abasteceu ${a.litros} L · ${reais(a.valor)}` })),
+    ...ocorrencias.map(o => ({ q: o.data, i: AlertTriangle, t: `Ocorrência: ${o.tipo} · ${nomeVeiculo(veiculos, o.veiculoId)}` }))
   ].sort((a, b) => b.q.localeCompare(a.q)).slice(0, 6)
 
   return (
-    <div className="main">
-      <div className="mtop"><div><h2>Painel da frota</h2><div className="muted">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div><button className="btn nav sm" onClick={() => ir('/veiculos/novo')}>+ Novo veículo</button></div>
-      <div className="kpis k5">
+    <div className="page">
+      <div className="mtop"><div><h2>Painel da frota</h2><div className="muted">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div><button className="btn nav sm" onClick={() => ir('/veiculos/novo')}><Plus size={16} /> Novo veículo</button></div>
+      <div className="kpis">
         <div className="kpi"><b style={{ color: 'var(--ok)' }}>{conta('disponivel')}</b><span>Disponíveis</span></div>
         <div className="kpi"><b style={{ color: 'var(--use)' }}>{conta('em_uso')}</b><span>Em uso agora · {conta('manutencao')} em manutenção</span></div>
-        <button className="kpi" onClick={() => ir('/aprovar')}><b style={{ color: 'var(--warn)' }}>{contarPendentes(d)}</b><span>Registros para aprovar ›</span></button>
+        <button className="kpi" onClick={() => ir('/aprovar')}><b style={{ color: 'var(--warn)' }}>{contarPendentes(d)}</b><span>Registros para aprovar</span></button>
         <div className="kpi"><b>{kml ? kml.toFixed(1).replace('.', ',') + ' km/l' : 'sem dados'}</b><span>Consumo médio no mês</span></div>
         <div className="kpi"><b>{reais(abastMes.reduce((s, a) => s + a.valor, 0))}</b><span>Combustível no mês</span></div>
       </div>
@@ -59,11 +62,11 @@ export function Painel({ ir }) {
         <div className="col">
           <div className="panel"><h3>Alertas automáticos {alertas.length > 0 && <span className="pill p-bad">{alertas.length}</span>}</h3>
             {alertas.length === 0 && <Vazio>Nenhum vencimento ou revisão próxima.</Vazio>}
-            {alertas.map((a, i) => <div key={i} className={'alert' + (a.grave ? ' bad' : '')}>{a.icone}<div><b>{a.titulo}</b><br /><span className="muted">{a.texto}</span></div></div>)}
+            {alertas.map((a, i) => { const Ico = ICONES_ALERTA[a.icone]; return <div key={i} className={'alert' + (a.grave ? ' bad' : '')}><Ico size={18} /><div><b>{a.titulo}</b><br /><span className="muted">{a.texto}</span></div></div> })}
           </div>
           <div className="panel"><h3>Últimos registros</h3><div className="feed">
             {recentes.length === 0 && <Vazio>Nenhum uso registrado ainda.</Vazio>}
-            {recentes.map((r, i) => <div key={i}>{r.t} <span className="muted">· {dataHora(r.q)}</span></div>)}
+            {recentes.map((r, i) => <div key={i}><r.i size={15} className="feed-ico" /><span>{r.t} <span className="muted">· {dataHora(r.q)}</span></span></div>)}
           </div></div>
         </div>
       </div>
@@ -114,11 +117,11 @@ export function Aprovar() {
   }
 
   return (
-    <div className="main">
+    <div className="page">
       <div className="mtop"><h2>Para aprovar · {itens.length}</h2>
         <div className="chips">{[['todos', 'Todos'], ['uso', 'Usos e hodômetro'], ['abastecimento', 'Abastecimentos'], ['ocorrencia', 'Ocorrências']].map(([k, r]) => <button key={k} className={'chip' + (filtro === k ? ' on' : '')} onClick={() => setFiltro(k)}>{r}</button>)}</div>
       </div>
-      {itens.length === 0 && <Vazio>Nada aguardando aprovação. 🎉</Vazio>}
+      {itens.length === 0 && <Vazio>Nada aguardando aprovação.</Vazio>}
       {itens.map(item => (
         <div key={item.tabela + item.reg.id} className="apv">
           <div className="apv-fotos">{item.fotos.filter(([id]) => id !== undefined).map(([id, r], i) => <Foto key={i} id={id} rotulo={r} />)}</div>
@@ -126,7 +129,7 @@ export function Aprovar() {
             <b>{item.titulo}</b>
             <div className="muted">{dataHora(item.quando)} · {item.texto}</div>
             {item.reg.motivoAnterior && <div className="muted">Reenviado após recusa: "{item.reg.motivoAnterior}"</div>}
-            {item.aviso && <div className="aviso">⚠️ {item.aviso}</div>}
+            {item.aviso && <div className="aviso"><AlertTriangle size={14} /> {item.aviso}</div>}
           </div>
           <div className="apv-acoes">
             {item.tipo === 'ocorrencia' ? (
@@ -161,8 +164,8 @@ export function Veiculos({ ir, novo }) {
   const { veiculos, usos } = useDados()
   const [editando, setEditando] = useState(novo ? VEICULO_VAZIO : null)
   return (
-    <div className="main">
-      <div className="mtop"><h2>Veículos</h2><button className="btn nav sm" onClick={() => setEditando(VEICULO_VAZIO)}>+ Novo veículo</button></div>
+    <div className="page">
+      <div className="mtop"><h2>Veículos</h2><button className="btn nav sm" onClick={() => setEditando(VEICULO_VAZIO)}><Plus size={16} /> Novo veículo</button></div>
       <div className="tbl-wrap"><table className="tbl">
         <thead><tr><th>Veículo</th><th>Situação</th><th>Hodômetro</th><th>Licenciamento</th><th>Seguro</th><th>Usos</th></tr></thead>
         <tbody>
@@ -234,7 +237,7 @@ function QrChaveiro({ veiculo }) {
     <div className="panel qr-panel">
       {url && <img src={url} alt="QR do chaveiro" />}
       <div><b>QR code do chaveiro</b><div className="muted">Imprima e prenda na chave. Ao escanear com a câmera, o condutor cai direto na retirada deste veículo.</div>
-        <div className="chips" style={{ marginTop: 8 }}><button className="btn ghost sm" onClick={imprimir}>🖨️ Imprimir etiqueta</button><a className="btn ghost sm" href={'#/retirar/' + veiculo.id}>Abrir link</a></div></div>
+        <div className="chips" style={{ marginTop: 8 }}><button className="btn ghost sm" onClick={imprimir}><Printer size={15} /> Imprimir etiqueta</button><a className="btn ghost sm" href={'#/retirar/' + veiculo.id}><ExternalLink size={15} /> Abrir link</a></div></div>
     </div>
   )
 }
@@ -243,7 +246,7 @@ export function FichaVeiculo({ id, ir }) {
   const { veiculos, usos, abastecimentos, ocorrencias, manutencoes, usuarios } = useDados()
   const v = veiculos.find(x => x.id === Number(id))
   const [editando, setEditando] = useState(false)
-  if (!v) return <div className="main"><Vazio>Veículo não encontrado.</Vazio></div>
+  if (!v) return <div className="page"><Vazio>Veículo não encontrado.</Vazio></div>
   const meusUsos = usos.filter(u => u.veiculoId === v.id)
   const meusAbast = abastecimentos.filter(a => a.veiculoId === v.id)
   const usosMes = meusUsos.filter(u => mesmoMes(u.inicio))
@@ -255,17 +258,17 @@ export function FichaVeiculo({ id, ir }) {
   const litrosMes = meses.map(m => meusAbast.filter(a => mesmoMes(a.data, m)).reduce((s, a) => s + a.litros, 0))
   const maxL = Math.max(1, ...litrosMes)
   const linha = [
-    ...meusUsos.map(u => ({ q: u.inicio, t: `🔑 ${nomeUsuario(usuarios, u.condutorId)} · ${u.status === 'aberto' ? 'em uso' : km(u.kmFinal - u.kmInicial) + ' em ' + duracao(u.inicio, u.fim)} · ${u.finalidade}`, s: u.status === 'aberto' ? null : u.aprovacao })),
-    ...meusAbast.map(a => ({ q: a.data, t: `⛽ ${a.litros} L · ${reais(a.valor)} · ${nomeUsuario(usuarios, a.condutorId)}`, s: a.aprovacao })),
-    ...ocorrencias.filter(o => o.veiculoId === v.id).map(o => ({ q: o.data, t: `⚠️ ${o.tipo} · ${o.descricao}`, s: o.aprovacao })),
-    ...manutencoes.filter(m => m.veiculoId === v.id).map(m => ({ q: m.data + 'T12:00:00', t: `🛠️ ${m.servico} · ${m.custo ? reais(Number(m.custo)) : 'custo a definir'}`, s: null, rot: m.status === 'realizada' ? 'Realizada' : 'Prevista' }))
+    ...meusUsos.map(u => ({ q: u.inicio, i: KeyRound, t: `${nomeUsuario(usuarios, u.condutorId)} · ${u.status === 'aberto' ? 'em uso' : km(u.kmFinal - u.kmInicial) + ' em ' + duracao(u.inicio, u.fim)} · ${u.finalidade}`, s: u.status === 'aberto' ? null : u.aprovacao })),
+    ...meusAbast.map(a => ({ q: a.data, i: Fuel, t: `${a.litros} L · ${reais(a.valor)} · ${nomeUsuario(usuarios, a.condutorId)}`, s: a.aprovacao })),
+    ...ocorrencias.filter(o => o.veiculoId === v.id).map(o => ({ q: o.data, i: AlertTriangle, t: `${o.tipo} · ${o.descricao}`, s: o.aprovacao })),
+    ...manutencoes.filter(m => m.veiculoId === v.id).map(m => ({ q: m.data + 'T12:00:00', i: Wrench, t: `${m.servico} · ${m.custo ? reais(Number(m.custo)) : 'custo a definir'}`, s: null, rot: m.status === 'realizada' ? 'Realizada' : 'Prevista' }))
   ].sort((a, b) => b.q.localeCompare(a.q))
 
   return (
-    <div className="main">
-      <div className="mtop"><div><button className="link" onClick={() => ir('/veiculos')}>‹ Veículos</button><h2>{v.modelo} · {v.placa}</h2><div className="muted">{km(v.hodometro)} · licenciamento até {data(v.licenciamento) || '?'} · seguro até {data(v.seguro) || '?'}</div></div>
+    <div className="page">
+      <div className="mtop"><div><button className="link" onClick={() => ir('/veiculos')}><ChevronLeft size={15} /> Veículos</button><h2>{v.modelo} · {v.placa}</h2><div className="muted">{km(v.hodometro)} · licenciamento até {data(v.licenciamento) || '?'} · seguro até {data(v.seguro) || '?'}</div></div>
         <div className="chips"><Pill tipo="situacao" valor={v.situacao} /><button className="btn ghost sm" onClick={() => setEditando(true)}>Editar</button></div></div>
-      <div className="kpis k3">
+      <div className="kpis">
         <div className="kpi"><b>{kml ? kml.toFixed(1).replace('.', ',') + ' km/l' : 'sem dados'}</b><span>Consumo médio</span></div>
         <div className="kpi"><b>{reais(custoMes)}</b><span>Custo no mês (combustível + manutenção)</span></div>
         <div className="kpi"><b>{usosMes.length}</b><span>Usos no mês</span></div>
@@ -274,7 +277,7 @@ export function FichaVeiculo({ id, ir }) {
         <div className="panel"><h3>Histórico do veículo</h3>
           <div className="tl">
             {linha.length === 0 && <Vazio>Nenhum registro ainda.</Vazio>}
-            {linha.map((l, i) => <div key={i}><span className="muted">{dataHora(l.q)}</span><span>{l.t}</span>{l.s ? <Pill valor={l.s} /> : l.rot ? <span className="pill p-warn">{l.rot}</span> : <span />}</div>)}
+            {linha.map((l, i) => <div key={i}><span className="muted">{dataHora(l.q)}</span><span className="tl-txt"><l.i size={15} className="feed-ico" />{l.t}</span>{l.s ? <Pill valor={l.s} /> : l.rot ? <span className="pill p-warn">{l.rot}</span> : <span />}</div>)}
           </div>
         </div>
         <div className="col">
@@ -296,8 +299,8 @@ export function Usuarios() {
   const { usuarios } = useDados()
   const [editando, setEditando] = useState(null)
   return (
-    <div className="main">
-      <div className="mtop"><h2>Usuários</h2><button className="btn nav sm" onClick={() => setEditando(USUARIO_VAZIO)}>+ Novo usuário</button></div>
+    <div className="page">
+      <div className="mtop"><h2>Usuários</h2><button className="btn nav sm" onClick={() => setEditando(USUARIO_VAZIO)}><Plus size={16} /> Novo usuário</button></div>
       <div className="tbl-wrap"><table className="tbl">
         <thead><tr><th>Nome</th><th>E-mail</th><th>Vínculo</th><th>Perfil</th><th>CNH</th><th>Situação</th></tr></thead>
         <tbody>
@@ -402,8 +405,8 @@ export function Manutencao() {
   const [editando, setEditando] = useState(null)
   const lista = [...manutencoes].sort((a, b) => (a.status === b.status ? b.data.localeCompare(a.data) : a.status === 'prevista' ? -1 : 1))
   return (
-    <div className="main">
-      <div className="mtop"><h2>Manutenção</h2><button className="btn nav sm" onClick={() => setEditando({})}>+ Registrar serviço</button></div>
+    <div className="page">
+      <div className="mtop"><h2>Manutenção</h2><button className="btn nav sm" onClick={() => setEditando({})}><Plus size={16} /> Registrar serviço</button></div>
       <div className="tbl-wrap"><table className="tbl">
         <thead><tr><th>Veículo</th><th>Serviço</th><th>Tipo</th><th>Data</th><th>Custo</th><th>Situação</th></tr></thead>
         <tbody>
@@ -440,8 +443,8 @@ export function Historico() {
   }
 
   return (
-    <div className="main">
-      <div className="mtop"><h2>Histórico</h2><button className="btn ghost sm" onClick={exportar}>⬇ Exportar planilha</button></div>
+    <div className="page">
+      <div className="mtop"><h2>Histórico</h2><button className="btn ghost sm" onClick={exportar}><Download size={15} /> Exportar planilha</button></div>
       <div className="chips">
         <input className="inp sm" type="month" value={mes} onChange={e => setMes(e.target.value)} />
         <select className="inp sm" value={veiculo} onChange={e => setVeiculo(e.target.value)}><option value="">Todos os veículos</option>{veiculos.map(v => <option key={v.id} value={v.id}>{v.modelo} · {v.placa}</option>)}</select>
@@ -471,7 +474,7 @@ export function Configuracoes() {
     location.reload()
   }
   return (
-    <div className="main narrow">
+    <div className="page estreita">
       <div className="mtop"><h2>Configurações</h2></div>
       <div className="panel">
         <div className="lbl">Fotos obrigatórias</div>

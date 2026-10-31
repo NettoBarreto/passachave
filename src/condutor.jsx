@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react'
+import { AlertTriangle, Car, ChevronRight, Fuel, IdCard, KeyRound, QrCode } from 'lucide-react'
 import { db } from './db.js'
-import { CampoFoto, Combustivel, Pill, Vazio, useDados } from './ui.jsx'
+import { CampoFoto, Combustivel, PageHeader, Pill, Vazio, useDados } from './ui.jsx'
 import { ITENS_CHECKLIST, NIVEIS_COMBUSTIVEL, dataHora, diasAte, duracao, km, reais } from './util.js'
 
 const aprovacaoInicial = config => (config.exigirAprovacao ? 'pendente' : 'aprovado')
 
-function Topo({ titulo, subtitulo, voltar, ir, aoVoltar, children }) {
-  return (
-    <div className="ahead">
-      {(voltar || aoVoltar) && <button className="back" onClick={() => (aoVoltar ? aoVoltar() : ir(voltar))}>‹</button>}
-      <div style={{ flex: 1 }}><div className="s">{subtitulo}</div><div className="t">{titulo}</div></div>
-      {children}
-    </div>
-  )
-}
-
 function Erro({ msg }) {
-  return msg ? <div className="erro">{msg}</div> : null
+  return msg ? <div className="erro" role="alert">{msg}</div> : null
 }
 
 export function usoAbertoDe(usos, usuarioId) {
@@ -29,35 +20,36 @@ export function InicioCondutor({ usuario, ir }) {
   const cnh = diasAte(usuario.cnhValidade)
   const ativos = veiculos.filter(v => v.situacao !== 'inativo')
   return (
-    <>
-      <Topo titulo={aberto ? 'Você está com uma chave' : 'Para onde vamos hoje?'} subtitulo={'Olá, ' + usuario.nome.split(' ')[0]} />
-      <div className="body">
+    <div className="page estreita">
+      <PageHeader titulo={aberto ? 'Você está com uma chave' : 'Para onde vamos hoje?'} subtitulo={'Olá, ' + usuario.nome.split(' ')[0]} />
+      <div className="stack">
         {cnh !== null && cnh <= Number(config.diasAviso) && (
-          <div className={'alert' + (cnh < 0 ? ' bad' : '')}>🪪 <div><b>{cnh < 0 ? 'Sua CNH está vencida' : 'Sua CNH vence em ' + cnh + ' dias'}</b><br /><span className="muted">{cnh < 0 && config.bloquearCnhVencida ? 'Retiradas bloqueadas até atualizar com a responsável.' : 'Avise a responsável quando renovar.'}</span></div></div>
+          <div className={'alert' + (cnh < 0 ? ' bad' : '')}><IdCard size={18} /><div><b>{cnh < 0 ? 'Sua CNH está vencida' : 'Sua CNH vence em ' + cnh + ' dias'}</b><div className="muted">{cnh < 0 && config.bloquearCnhVencida ? 'Retiradas bloqueadas até atualizar com a responsável.' : 'Avise a responsável quando renovar.'}</div></div></div>
         )}
         {aberto ? <CartaoEmUso uso={aberto} ir={ir} /> : (
-          <div className="qr">
-            <div className="box" />
-            <b>Escaneie o QR do chaveiro</b>
-            <div className="muted">Use a câmera do celular na etiqueta da chave, ou escolha o veículo abaixo.</div>
+          <div className="qr-chamada">
+            <div className="qr-icone"><QrCode size={34} /></div>
+            <div><b>Escaneie o QR do chaveiro</b><div className="muted">Use a câmera do celular na etiqueta da chave, ou escolha o veículo abaixo.</div></div>
           </div>
         )}
-        <div className="lbl" style={{ marginTop: 4 }}>Veículos</div>
+        <div className="secao">Veículos</div>
         {ativos.length === 0 && <Vazio>Nenhum veículo cadastrado ainda.</Vazio>}
-        {ativos.map(v => {
-          const uso = usos.find(u => u.veiculoId === v.id && u.status === 'aberto')
-          const quem = uso && usuarios.find(x => x.id === uso.condutorId)
-          const pode = v.situacao === 'disponivel' && !aberto
-          return (
-            <button key={v.id} className="card veh" disabled={!pode} onClick={() => ir('/retirar/' + v.id)}>
-              <div className="car">🚐</div>
-              <div style={{ flex: 1, textAlign: 'left' }}><b>{v.modelo} · {v.placa}</b><small>{uso ? `com ${quem?.nome.split(' ')[0]} desde ${dataHora(uso.inicio)}` : km(v.hodometro)}</small></div>
-              <Pill tipo="situacao" valor={v.situacao} />
-            </button>
-          )
-        })}
+        <div className="grid-veiculos">
+          {ativos.map(v => {
+            const uso = usos.find(u => u.veiculoId === v.id && u.status === 'aberto')
+            const quem = uso && usuarios.find(x => x.id === uso.condutorId)
+            const pode = v.situacao === 'disponivel' && !aberto
+            return (
+              <button key={v.id} className="card veh" disabled={!pode} onClick={() => ir('/retirar/' + v.id)}>
+                <div className="car"><Car size={22} /></div>
+                <div className="veh-txt"><b>{v.modelo} · {v.placa}</b><small>{uso ? `com ${quem?.nome.split(' ')[0]} desde ${dataHora(uso.inicio)}` : km(v.hodometro)}</small></div>
+                <Pill tipo="situacao" valor={v.situacao} />
+              </button>
+            )
+          })}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -66,10 +58,9 @@ function CartaoEmUso({ uso, ir }) {
   const v = veiculos.find(x => x.id === uso.veiculoId)
   return (
     <button className="card emuso" onClick={() => ir('/uso')}>
-      <span className="pill p-use">Em uso</span>
-      <b style={{ fontSize: 16 }}>{v?.modelo} · {v?.placa}</b>
-      <span className="muted">Saída {dataHora(uso.inicio)} · {duracao(uso.inicio)}</span>
-      <span className="link">Abrir registro do uso ›</span>
+      <div className="car destaque"><KeyRound size={22} /></div>
+      <div className="veh-txt"><span className="pill p-use">Em uso</span><b>{v?.modelo} · {v?.placa}</b><small>Saída {dataHora(uso.inicio)} · {duracao(uso.inicio)}</small></div>
+      <ChevronRight size={20} />
     </button>
   )
 }
@@ -98,10 +89,10 @@ export function Retirada({ usuario, veiculoId, ir }) {
   else if (config.bloquearCnhVencida && cnh !== null && cnh < 0) bloqueio = 'Sua CNH está vencida. Atualize o cadastro com a responsável para retirar veículos.'
 
   if (bloqueio) return (
-    <>
-      <Topo titulo="Retirada" subtitulo={v ? v.modelo + ' · ' + v.placa : ''} voltar="/inicio" ir={ir} />
-      <div className="body"><div className="erro">{bloqueio}</div><button className="btn ghost" onClick={() => ir('/inicio')}>Voltar ao início</button></div>
-    </>
+    <div className="page estreita">
+      <PageHeader titulo="Retirada" subtitulo={v ? v.modelo + ' · ' + v.placa : ''} voltar={() => ir('/inicio')} />
+      <div className="stack"><Erro msg={bloqueio} /><button className="btn ghost" onClick={() => ir('/inicio')}>Voltar ao início</button></div>
+    </div>
   )
 
   function avancar() {
@@ -110,7 +101,7 @@ export function Retirada({ usuario, veiculoId, ir }) {
     if (n < v.hodometro) return setErro(`O valor é menor que o último registrado (${km(v.hodometro)}). Confira o painel do carro.`)
     if (config.fotoHodometro && !fotoKm) return setErro('Tire a foto do hodômetro.')
     if (!finalidade.trim()) return setErro('Informe a finalidade do uso.')
-    setErro(''); setPasso(2)
+    setErro(''); setPasso(2); window.scrollTo(0, 0)
   }
 
   async function confirmar() {
@@ -142,49 +133,51 @@ export function Retirada({ usuario, veiculoId, ir }) {
   const marcar = (item, campo, valor) => setChecklist(c => ({ ...c, [item]: { ...c[item], [campo]: valor } }))
 
   return (
-    <>
-      <Topo titulo={passo === 1 ? `${v.modelo} · ${v.placa}` : 'Verificação de saída'} subtitulo={`Retirada · passo ${passo} de 2`} voltar="/inicio" ir={ir} aoVoltar={passo === 2 ? () => setPasso(1) : null} />
-      <div className="steps-bar"><i className="on" /><i className={passo === 2 ? 'on' : ''} /></div>
-      <div className="body">
-        {passo === 1 ? (
-          <>
-            <div className="card row"><div><div className="lbl">Condutor</div><b>{usuario.nome}</b></div><div style={{ textAlign: 'right' }}><div className="lbl">Data e hora</div><b>{dataHora(new Date().toISOString())}</b></div></div>
-            <label className="campo"><span className="lbl">Hodômetro inicial (km)</span><input className="inp big" inputMode="numeric" value={kmInicial} onChange={e => setKmInicial(e.target.value.replace(/\D/g, ''))} /><span className="muted">Último registrado: {km(v.hodometro)}</span></label>
+    <div className="page estreita">
+      <PageHeader titulo={passo === 1 ? `Retirada · ${v.modelo}` : 'Verificação de saída'} subtitulo={`${v.placa} · passo ${passo} de 2`} voltar={() => (passo === 2 ? setPasso(1) : ir('/inicio'))} />
+      <div className="passos"><i className="on" /><i className={passo === 2 ? 'on' : ''} /></div>
+      {passo === 1 ? (
+        <div className="stack">
+          <div className="card row"><div><div className="lbl">Condutor</div><b>{usuario.nome}</b></div><div className="dir"><div className="lbl">Data e hora</div><b>{dataHora(new Date().toISOString())}</b></div></div>
+          <div className="form">
+            <label className="campo"><span className="lbl">Hodômetro inicial (km)</span><input className="inp big" inputMode="numeric" name="kmInicial" value={kmInicial} onChange={e => setKmInicial(e.target.value.replace(/\D/g, ''))} /><span className="muted">Último registrado: {km(v.hodometro)}</span></label>
             <CampoFoto rotulo="Foto do hodômetro" obrigatoria={config.fotoHodometro} valor={fotoKm} onChange={setFotoKm} />
-            <label className="campo"><span className="lbl">Finalidade</span><input className="inp" placeholder="Ex.: entrega de cestas no bairro X" value={finalidade} onChange={e => setFinalidade(e.target.value)} /></label>
+            <label className="campo"><span className="lbl">Finalidade</span><input className="inp" name="finalidade" placeholder="Ex.: entrega de cestas no bairro X" value={finalidade} onChange={e => setFinalidade(e.target.value)} /></label>
             <label className="campo"><span className="lbl">Previsão de devolução<span className="opt">opcional</span></span><input className="inp" type="time" value={previsao} onChange={e => setPrevisao(e.target.value)} /></label>
-            <Erro msg={erro} />
-            <button className="btn pri" onClick={avancar}>Continuar para a verificação</button>
-          </>
-        ) : (
-          <>
-            <div className="card" style={{ padding: '4px 12px' }}>
-              {ITENS_CHECKLIST.map(item => (
-                <div key={item} className="chk-bloco">
-                  <div className="chk">{item}
-                    <div className="seg">
-                      <button className={checklist[item].ok ? 'y' : ''} onClick={() => marcar(item, 'ok', true)}>OK</button>
-                      <button className={!checklist[item].ok ? 'n' : ''} onClick={() => marcar(item, 'ok', false)}>Problema</button>
-                    </div>
+          </div>
+          <Erro msg={erro} />
+          <button className="btn pri" onClick={avancar}>Continuar para a verificação</button>
+        </div>
+      ) : (
+        <div className="stack">
+          <div className="card lista-chk">
+            {ITENS_CHECKLIST.map(item => (
+              <div key={item} className="chk-bloco">
+                <div className="chk">{item}
+                  <div className="seg">
+                    <button className={checklist[item].ok ? 'y' : ''} onClick={() => marcar(item, 'ok', true)}>OK</button>
+                    <button className={!checklist[item].ok ? 'n' : ''} onClick={() => marcar(item, 'ok', false)}>Problema</button>
                   </div>
-                  {!checklist[item].ok && (
-                    <div className="chk-prob">
-                      <input className="inp" placeholder="Descreva o problema" value={checklist[item].descricao} onChange={e => marcar(item, 'descricao', e.target.value)} />
-                      <CampoFoto rotulo="Foto do problema" obrigatoria={config.fotoProblema} valor={checklist[item].foto} onChange={id => marcar(item, 'foto', id)} />
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-            <div className="card"><div className="lbl">Combustível na saída</div><Combustivel valor={comb} onChange={setComb} /><div className="muted" style={{ marginTop: 4 }}>{comb === null ? 'Toque no nível' : NIVEIS_COMBUSTIVEL[comb]}</div></div>
+                {!checklist[item].ok && (
+                  <div className="chk-prob">
+                    <input className="inp" placeholder="Descreva o problema" value={checklist[item].descricao} onChange={e => marcar(item, 'descricao', e.target.value)} />
+                    <CampoFoto rotulo="Foto do problema" obrigatoria={config.fotoProblema} valor={checklist[item].foto} onChange={id => marcar(item, 'foto', id)} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="form">
+            <div className="card"><div className="lbl">Combustível na saída</div><Combustivel valor={comb} onChange={setComb} /><div className="muted">{comb === null ? 'Toque no nível' : NIVEIS_COMBUSTIVEL[comb]}</div></div>
             <CampoFoto rotulo="Foto do marcador de combustível" obrigatoria={config.fotoCombustivel} valor={fotoComb} onChange={setFotoComb} />
-            <div className="muted">Problemas marcados aqui viram ocorrência e protegem você: ficam registrados como já existentes antes da saída.</div>
-            <Erro msg={erro} />
-            <button className="btn pri" disabled={salvando} onClick={confirmar}>{salvando ? 'Registrando…' : 'Confirmar saída'}</button>
-          </>
-        )}
-      </div>
-    </>
+          </div>
+          <div className="muted">Problemas marcados aqui viram ocorrência e protegem você: ficam registrados como já existentes antes da saída.</div>
+          <Erro msg={erro} />
+          <button className="btn pri" disabled={salvando} onClick={confirmar}>{salvando ? 'Registrando…' : 'Confirmar saída'}</button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -207,18 +200,18 @@ export function EmUso({ usuario, ir }) {
     ...ocorrencias.filter(o => o.usoId === uso.id).map(o => ({ quando: o.data, texto: `Ocorrência · ${o.tipo}`, status: o.aprovacao }))
   ].sort((a, b) => a.quando.localeCompare(b.quando))
   return (
-    <>
-      <Topo titulo={`${v.modelo} · ${v.placa}`} subtitulo="Você está com a chave" voltar="/inicio" ir={ir} />
-      <div className="body">
-        <div className="card" style={{ textAlign: 'center' }}>
+    <div className="page estreita">
+      <PageHeader titulo={`${v.modelo} · ${v.placa}`} subtitulo="Você está com a chave" voltar={() => ir('/inicio')} />
+      <div className="stack">
+        <div className="card centro">
           <span className="pill p-use">Em uso</span>
           <div className="big-num">{duracao(uso.inicio)}</div>
           <div className="muted">Saída {dataHora(uso.inicio)} · {km(uso.kmInicial)}{uso.previsao ? ' · devolução prevista ' + uso.previsao : ''}</div>
           <div className="muted">{uso.finalidade}</div>
         </div>
         <div className="grid2">
-          <button className="card acao" onClick={() => ir('/abastecer')}><span>⛽</span><b>Abastecer</b></button>
-          <button className="card acao" onClick={() => ir('/ocorrencia')}><span>⚠️</span><b>Ocorrência</b></button>
+          <button className="card acao" onClick={() => ir('/abastecer')}><Fuel size={24} /><b>Abastecer</b></button>
+          <button className="card acao" onClick={() => ir('/ocorrencia')}><AlertTriangle size={24} /><b>Ocorrência</b></button>
         </div>
         <div className="card">
           <div className="lbl">Registros deste uso</div>
@@ -226,18 +219,18 @@ export function EmUso({ usuario, ir }) {
             <div key={i} className="row linha"><span className="muted">{dataHora(r.quando)} · {r.texto}</span>{r.status && <Pill valor={r.status} />}</div>
           ))}
         </div>
-        <button className="btn nav" onClick={() => ir('/devolver')}>🔑 Devolver veículo</button>
+        <button className="btn nav" onClick={() => ir('/devolver')}><KeyRound size={18} /> Devolver veículo</button>
       </div>
-    </>
+    </div>
   )
 }
 
 function SemUso({ ir }) {
   return (
-    <>
-      <Topo titulo="Nenhum veículo com você" subtitulo="" voltar="/inicio" ir={ir} />
-      <div className="body"><Vazio>Você não está com nenhum veículo agora.</Vazio><button className="btn ghost" onClick={() => ir('/inicio')}>Voltar ao início</button></div>
-    </>
+    <div className="page estreita">
+      <PageHeader titulo="Nenhum veículo com você" voltar={() => ir('/inicio')} />
+      <div className="stack"><Vazio>Você não está com nenhum veículo agora.</Vazio><button className="btn ghost" onClick={() => ir('/inicio')}>Voltar ao início</button></div>
+    </div>
   )
 }
 
@@ -267,22 +260,22 @@ export function Abastecer({ usuario, ir }) {
   }
 
   return (
-    <>
-      <Topo titulo="Abastecimento" subtitulo={`${v.modelo} · ${v.placa}`} voltar="/uso" ir={ir} />
-      <div className="body">
-        <div className="grid2">
-          <label className="campo"><span className="lbl">Litros</span><input className="inp big" inputMode="decimal" placeholder="0,0" value={f.litros} onChange={set('litros')} /></label>
-          <label className="campo"><span className="lbl">Valor (R$)</span><input className="inp big" inputMode="decimal" placeholder="0,00" value={f.valor} onChange={set('valor')} /></label>
+    <div className="page estreita">
+      <PageHeader titulo="Abastecimento" subtitulo={`${v.modelo} · ${v.placa}`} voltar={() => ir('/uso')} />
+      <div className="stack">
+        <div className="form">
+          <label className="campo"><span className="lbl">Litros</span><input className="inp big" name="litros" inputMode="decimal" placeholder="0,0" value={f.litros} onChange={set('litros')} /></label>
+          <label className="campo"><span className="lbl">Valor (R$)</span><input className="inp big" name="valor" inputMode="decimal" placeholder="0,00" value={f.valor} onChange={set('valor')} /></label>
+          <label className="campo"><span className="lbl">Hodômetro no abastecimento (km)</span><input className="inp" name="km" inputMode="numeric" placeholder={String(uso.kmInicial)} value={f.km} onChange={e => setF({ ...f, km: e.target.value.replace(/\D/g, '') })} /></label>
+          <label className="campo"><span className="lbl">Posto<span className="opt">opcional</span></span><input className="inp" placeholder="Ex.: Posto Central" value={f.posto} onChange={set('posto')} /></label>
+          <CampoFoto rotulo="Foto do hodômetro" obrigatoria={config.fotoHodometro} valor={fotoKm} onChange={setFotoKm} />
+          <CampoFoto rotulo="Foto da nota fiscal" obrigatoria={config.fotoNotaFiscal} valor={fotoNota} onChange={setFotoNota} />
         </div>
         {preco && <div className="muted">{reais(preco)} por litro</div>}
-        <label className="campo"><span className="lbl">Hodômetro no abastecimento (km)</span><input className="inp" inputMode="numeric" placeholder={String(uso.kmInicial)} value={f.km} onChange={e => setF({ ...f, km: e.target.value.replace(/\D/g, '') })} /></label>
-        <label className="campo"><span className="lbl">Posto<span className="opt">opcional</span></span><input className="inp" placeholder="Ex.: Posto Central" value={f.posto} onChange={set('posto')} /></label>
-        <CampoFoto rotulo="Foto do hodômetro" obrigatoria={config.fotoHodometro} valor={fotoKm} onChange={setFotoKm} />
-        <CampoFoto rotulo="Foto da nota fiscal" obrigatoria={config.fotoNotaFiscal} valor={fotoNota} onChange={setFotoNota} />
         <Erro msg={erro} />
         <button className="btn pri" onClick={salvar}>Salvar abastecimento</button>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -310,18 +303,18 @@ export function NovaOcorrencia({ usuario, ir }) {
   }
 
   return (
-    <>
-      <Topo titulo="Nova ocorrência" subtitulo={`${v.modelo} · ${v.placa}`} voltar="/uso" ir={ir} />
-      <div className="body">
+    <div className="page estreita">
+      <PageHeader titulo="Nova ocorrência" subtitulo={`${v.modelo} · ${v.placa}`} voltar={() => ir('/uso')} />
+      <div className="stack">
         <div className="campo"><span className="lbl">Tipo</span><div className="chips">{TIPOS.map(t => <button key={t} className={'chip' + (tipo === t ? ' on' : '')} onClick={() => setTipo(t)}>{t}</button>)}</div></div>
         <div className="campo"><span className="lbl">Gravidade</span><div className="chips">{GRAVIDADES.map(g => <button key={g} className={'chip' + (gravidade === g ? ' on' : '')} onClick={() => setGravidade(g)}>{g}</button>)}</div></div>
-        <label className="campo"><span className="lbl">Descrição</span><textarea className="inp" rows="4" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="O que aconteceu, onde e quando" /></label>
+        <label className="campo"><span className="lbl">Descrição</span><textarea className="inp" name="descricao" rows="4" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="O que aconteceu, onde e quando" /></label>
         <CampoFoto rotulo="Fotografia" obrigatoria={config.fotoProblema} valor={foto} onChange={setFoto} />
         <div className="muted">A responsável é avisada no painel. Ocorrências que impedem o uso deixam o veículo em manutenção na devolução.</div>
         <Erro msg={erro} />
         <button className="btn pri" onClick={salvar}>Registrar ocorrência</button>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -367,15 +360,19 @@ export function Devolucao({ usuario, ir }) {
   }
 
   return (
-    <>
-      <Topo titulo="Devolução" subtitulo={`${v.modelo} · ${v.placa}`} voltar="/uso" ir={ir} />
-      <div className="body">
-        <label className="campo"><span className="lbl">Hodômetro final (km)</span><input className="inp big" inputMode="numeric" placeholder={String(kmMinimo)} value={kmFinal} onChange={e => setKmFinal(e.target.value.replace(/\D/g, ''))} /></label>
+    <div className="page estreita">
+      <PageHeader titulo="Devolução" subtitulo={`${v.modelo} · ${v.placa}`} voltar={() => ir('/uso')} />
+      <div className="stack">
+        <div className="form">
+          <label className="campo"><span className="lbl">Hodômetro final (km)</span><input className="inp big" name="kmFinal" inputMode="numeric" placeholder={String(kmMinimo)} value={kmFinal} onChange={e => setKmFinal(e.target.value.replace(/\D/g, ''))} /></label>
+          <div className="card"><div className="lbl">Combustível na devolução</div><Combustivel valor={comb} onChange={setComb} /><div className="muted">{comb === null ? 'Toque no nível' : NIVEIS_COMBUSTIVEL[comb]} · saída: {NIVEIS_COMBUSTIVEL[uso.combSaida]}</div></div>
+        </div>
         {rodados !== null && rodados >= 0 && <div className="card row ok-box"><span>Rodados neste uso</span><b>{km(rodados)} · {duracao(uso.inicio)}</b></div>}
-        <div className="card"><div className="lbl">Combustível na devolução</div><Combustivel valor={comb} onChange={setComb} /><div className="muted" style={{ marginTop: 4 }}>{comb === null ? 'Toque no nível' : NIVEIS_COMBUSTIVEL[comb]} · saída: {NIVEIS_COMBUSTIVEL[uso.combSaida]}</div></div>
-        <CampoFoto rotulo="Foto do hodômetro" obrigatoria={config.fotoHodometro} valor={fotoKm} onChange={setFotoKm} />
-        <CampoFoto rotulo="Foto do marcador de combustível" obrigatoria={config.fotoCombustivel} valor={fotoComb} onChange={setFotoComb} />
-        <div className="card" style={{ padding: '4px 12px' }}>
+        <div className="form">
+          <CampoFoto rotulo="Foto do hodômetro" obrigatoria={config.fotoHodometro} valor={fotoKm} onChange={setFotoKm} />
+          <CampoFoto rotulo="Foto do marcador de combustível" obrigatoria={config.fotoCombustivel} valor={fotoComb} onChange={setFotoComb} />
+        </div>
+        <div className="card lista-chk">
           <div className="chk">Mesmas condições da saída?<div className="seg"><button className={mesmas ? 'y' : ''} onClick={() => setMesmas(true)}>Sim</button><button className={!mesmas ? 'n' : ''} onClick={() => setMesmas(false)}>Não</button></div></div>
           <div className="chk">Chave e documento devolvidos<div className="seg"><button className={chave ? 'y' : ''} onClick={() => setChave(true)}>Sim</button><button className={!chave ? 'n' : ''} onClick={() => setChave(false)}>Não</button></div></div>
         </div>
@@ -383,7 +380,7 @@ export function Devolucao({ usuario, ir }) {
         <Erro msg={erro} />
         <button className="btn nav" disabled={salvando} onClick={finalizar}>{salvando ? 'Finalizando…' : 'Finalizar devolução'}</button>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -402,13 +399,13 @@ export function MeusUsos({ usuario, ir }) {
   }
 
   return (
-    <>
-      <Topo titulo="Meus usos" subtitulo={usuario.nome} />
-      <div className="body">
+    <div className="page estreita">
+      <PageHeader titulo="Meus usos" subtitulo={usuario.nome} />
+      <div className="stack">
         {itens.length === 0 && <Vazio>Seus usos, abastecimentos e ocorrências aparecem aqui.</Vazio>}
         {itens.map(item => (
           <div key={item.tabela + item.reg.id} className={'card' + (item.status === 'recusado' ? ' recusado' : '')}>
-            <div className="row"><b>{item.titulo}</b>{item.status ? <Pill valor={item.status} /> : <button className="link" onClick={() => ir('/uso')}>abrir ›</button>}</div>
+            <div className="row"><b>{item.titulo}</b>{item.status ? <Pill valor={item.status} /> : <button className="link" onClick={() => ir('/uso')}>abrir</button>}</div>
             <div className="muted">{item.sub}</div>
             {item.status === 'recusado' && (
               <>
@@ -419,6 +416,6 @@ export function MeusUsos({ usuario, ir }) {
           </div>
         ))}
       </div>
-    </>
+    </div>
   )
 }

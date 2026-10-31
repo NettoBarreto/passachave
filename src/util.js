@@ -54,30 +54,30 @@ export function calcularAlertas({ usuarios, veiculos, ocorrencias, config }) {
   for (const u of usuarios) {
     if (!u.ativo) continue
     const d = diasAte(u.cnhValidade)
-    if (d !== null && d <= limite) alertas.push({ grave: d < 0, icone: '🪪', titulo: d < 0 ? 'CNH vencida' : 'CNH vencendo', texto: `${u.nome} · ${textoPrazo(d)}` })
+    if (d !== null && d <= limite) alertas.push({ grave: d < 0, icone: 'cnh', titulo: d < 0 ? 'CNH vencida' : 'CNH vencendo', texto: `${u.nome} · ${textoPrazo(d)}` })
   }
   for (const v of veiculos) {
     if (v.situacao === 'inativo') continue
     const lic = diasAte(v.licenciamento)
-    if (lic !== null && lic <= limite) alertas.push({ grave: lic < 0, icone: '📄', titulo: lic < 0 ? 'Licenciamento vencido' : 'Licenciamento a vencer', texto: `${v.modelo} ${v.placa} · ${textoPrazo(lic)}` })
+    if (lic !== null && lic <= limite) alertas.push({ grave: lic < 0, icone: 'documento', titulo: lic < 0 ? 'Licenciamento vencido' : 'Licenciamento a vencer', texto: `${v.modelo} ${v.placa} · ${textoPrazo(lic)}` })
     const seg = diasAte(v.seguro)
-    if (seg !== null && seg <= limite) alertas.push({ grave: seg < 0, icone: '🛡️', titulo: seg < 0 ? 'Seguro vencido' : 'Seguro a vencer', texto: `${v.modelo} ${v.placa} · ${textoPrazo(seg)}` })
+    if (seg !== null && seg <= limite) alertas.push({ grave: seg < 0, icone: 'seguro', titulo: seg < 0 ? 'Seguro vencido' : 'Seguro a vencer', texto: `${v.modelo} ${v.placa} · ${textoPrazo(seg)}` })
     if (v.revisaoKm) {
       const proxima = (v.ultimaRevisaoKm || 0) + Number(v.revisaoKm)
       const falta = proxima - v.hodometro
-      if (falta <= 1000) alertas.push({ grave: falta <= 0, icone: '🛠️', titulo: 'Revisão por quilometragem', texto: `${v.modelo} ${v.placa} · ${falta <= 0 ? `passou ${km(-falta)} da revisão` : `faltam ${km(falta)} para ${km(proxima)}`}` })
+      if (falta <= 1000) alertas.push({ grave: falta <= 0, icone: 'revisao', titulo: 'Revisão por quilometragem', texto: `${v.modelo} ${v.placa} · ${falta <= 0 ? `passou ${km(-falta)} da revisão` : `faltam ${km(falta)} para ${km(proxima)}`}` })
     }
     if (v.revisaoMeses && v.ultimaRevisaoData) {
       const prox = new Date(v.ultimaRevisaoData + 'T12:00:00')
       prox.setMonth(prox.getMonth() + Number(v.revisaoMeses))
       const d = diasAte(prox.toISOString().slice(0, 10))
-      if (d <= limite) alertas.push({ grave: d < 0, icone: '📅', titulo: 'Revisão por data', texto: `${v.modelo} ${v.placa} · ${textoPrazo(d)}` })
+      if (d <= limite) alertas.push({ grave: d < 0, icone: 'agenda', titulo: 'Revisão por data', texto: `${v.modelo} ${v.placa} · ${textoPrazo(d)}` })
     }
   }
   for (const o of ocorrencias) {
     if (o.gravidade === 'Impede o uso' && o.aprovacao === 'pendente') {
       const v = veiculos.find(x => x.id === o.veiculoId)
-      alertas.push({ grave: true, icone: '⚠️', titulo: 'Ocorrência que impede o uso', texto: `${v ? v.modelo + ' ' + v.placa : ''} · ${o.tipo}` })
+      alertas.push({ grave: true, icone: 'ocorrencia', titulo: 'Ocorrência que impede o uso', texto: `${v ? v.modelo + ' ' + v.placa : ''} · ${o.tipo}` })
     }
   }
   return alertas.sort((a, b) => Number(b.grave) - Number(a.grave))
