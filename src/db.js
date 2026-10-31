@@ -14,11 +14,12 @@ db.version(1).stores({
   config: 'chave'
 })
 
+// Fotos começam opcionais; cada organização liga o que quiser exigir em Configurações.
 export const CONFIG_PADRAO = {
-  fotoHodometro: true,
-  fotoCombustivel: true,
+  fotoHodometro: false,
+  fotoCombustivel: false,
   fotoNotaFiscal: false,
-  fotoProblema: true,
+  fotoProblema: false,
   exigirAprovacao: true,
   diasAviso: 15,
   bloquearCnhVencida: true
@@ -43,29 +44,46 @@ export async function hashSenha(senha) {
 
 const diasAPartirDeHoje = hoje
 
-// Contas e veículos de teste criados na primeira abertura. Usos, abastecimentos,
-// ocorrências e manutenções começam vazios e são registrados de verdade no app.
-export async function criarDadosIniciais() {
-  if ((await db.usuarios.count()) > 0) return
+export const USUARIOS_TESTE = [
+  { nome: 'Marina Alves', email: 'marina@passachave.test', perfil: 'responsavel', vinculo: 'Funcionária', cnhCategoria: 'B', cnhValidade: 900, ativo: true },
+  { nome: 'Rafael Lima', email: 'rafael@passachave.test', perfil: 'condutor', vinculo: 'Voluntário', cnhCategoria: 'B', cnhValidade: 1500, ativo: true },
+  { nome: 'Ana Souza', email: 'ana@passachave.test', perfil: 'condutor', vinculo: 'Voluntária', cnhCategoria: 'AB', cnhValidade: 700, ativo: true },
+  { nome: 'Paulo Reis', email: 'paulo@passachave.test', perfil: 'condutor', vinculo: 'Funcionário', cnhCategoria: 'B', cnhValidade: 10, ativo: true }
+]
+
+const VEICULOS_TESTE = [
+  { placa: 'FTR-2B41', modelo: 'Fiat Fiorino', ano: 2021, combustivel: 'Flex', hodometro: 48210, situacao: 'disponivel', licenciamento: 240, seguro: 140, revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 39000, ultimaRevisaoData: -120 },
+  { placa: 'BRA-3C17', modelo: 'VW Gol', ano: 2018, combustivel: 'Flex', hodometro: 91533, situacao: 'disponivel', licenciamento: -5, seguro: 200, revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 85000, ultimaRevisaoData: -60 },
+  { placa: 'KMB-1A88', modelo: 'VW Kombi', ano: 2013, combustivel: 'Flex', hodometro: 152004, situacao: 'disponivel', licenciamento: 180, seguro: 7, revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 145000, ultimaRevisaoData: -90 },
+  { placa: 'STR-7E55', modelo: 'Fiat Strada', ano: 2022, combustivel: 'Flex', hodometro: 22418, situacao: 'disponivel', licenciamento: 300, seguro: 260, revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 20000, ultimaRevisaoData: 0 }
+]
+
+// Contas e veículos de teste. As datas ficam relativas ao dia de hoje para os alertas sempre aparecerem.
+export async function criarBase() {
   const senha = await hashSenha('teste123')
-  await db.usuarios.bulkAdd([
-    { nome: 'Marina Alves', email: 'marina@passachave.test', perfil: 'responsavel', vinculo: 'Funcionária', cnhCategoria: 'B', cnhValidade: diasAPartirDeHoje(900), ativo: true, senhaHash: senha },
-    { nome: 'Rafael Lima', email: 'rafael@passachave.test', perfil: 'condutor', vinculo: 'Voluntário', cnhCategoria: 'B', cnhValidade: diasAPartirDeHoje(1500), ativo: true, senhaHash: senha },
-    { nome: 'Ana Souza', email: 'ana@passachave.test', perfil: 'condutor', vinculo: 'Voluntária', cnhCategoria: 'AB', cnhValidade: diasAPartirDeHoje(700), ativo: true, senhaHash: senha },
-    { nome: 'Paulo Reis', email: 'paulo@passachave.test', perfil: 'condutor', vinculo: 'Funcionário', cnhCategoria: 'B', cnhValidade: diasAPartirDeHoje(10), ativo: true, senhaHash: senha }
-  ])
-  await db.veiculos.bulkAdd([
-    { placa: 'FTR-2B41', modelo: 'Fiat Fiorino', ano: 2021, combustivel: 'Flex', hodometro: 48210, situacao: 'disponivel', licenciamento: diasAPartirDeHoje(240), seguro: diasAPartirDeHoje(140), revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 39000, ultimaRevisaoData: diasAPartirDeHoje(-120) },
-    { placa: 'BRA-3C17', modelo: 'VW Gol', ano: 2018, combustivel: 'Flex', hodometro: 91533, situacao: 'disponivel', licenciamento: diasAPartirDeHoje(-5), seguro: diasAPartirDeHoje(200), revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 85000, ultimaRevisaoData: diasAPartirDeHoje(-60) },
-    { placa: 'KMB-1A88', modelo: 'VW Kombi', ano: 2013, combustivel: 'Flex', hodometro: 152004, situacao: 'disponivel', licenciamento: diasAPartirDeHoje(180), seguro: diasAPartirDeHoje(7), revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 145000, ultimaRevisaoData: diasAPartirDeHoje(-90) },
-    { placa: 'STR-7E55', modelo: 'Fiat Strada', ano: 2022, combustivel: 'Flex', hodometro: 22418, situacao: 'disponivel', licenciamento: diasAPartirDeHoje(300), seguro: diasAPartirDeHoje(260), revisaoKm: 10000, revisaoMeses: 6, ultimaRevisaoKm: 20000, ultimaRevisaoData: hoje() }
-  ])
+  await db.usuarios.bulkAdd(USUARIOS_TESTE.map(u => ({ ...u, cnhValidade: diasAPartirDeHoje(u.cnhValidade), senhaHash: senha })))
+  await db.veiculos.bulkAdd(VEICULOS_TESTE.map(v => ({
+    ...v, licenciamento: diasAPartirDeHoje(v.licenciamento), seguro: diasAPartirDeHoje(v.seguro), ultimaRevisaoData: diasAPartirDeHoje(v.ultimaRevisaoData)
+  })))
 }
 
-export async function restaurarDemonstracao() {
+// Na primeira abertura o app já vem com dados simulados para demonstração.
+export async function criarDadosIniciais() {
+  if ((await db.usuarios.count()) > 0) return
+  const { criarDadosSimulados } = await import('./demo.js')
+  await criarBase()
+  await criarDadosSimulados()
+}
+
+// tipo 'simulado' preenche meses de uso; 'zero' deixa só as contas e os veículos.
+export async function restaurarDemonstracao(tipo = 'simulado') {
   await db.delete()
   await db.open()
-  await criarDadosIniciais()
+  await criarBase()
+  if (tipo === 'simulado') {
+    const { criarDadosSimulados } = await import('./demo.js')
+    await criarDadosSimulados()
+  }
 }
 
 // Reduz a foto antes de guardar, para caber no armazenamento do navegador.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Car, ChevronRight, Fuel, IdCard, KeyRound, QrCode } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Fuel, IdCard, KeyRound, QrCode } from 'lucide-react'
 import { db } from './db.js'
-import { CampoFoto, Combustivel, PageHeader, Pill, Vazio, useDados } from './ui.jsx'
+import { CampoFoto, Combustivel, PageHeader, Pill, Vazio, VeiculoImg, useDados } from './ui.jsx'
 import { ITENS_CHECKLIST, NIVEIS_COMBUSTIVEL, dataHora, diasAte, duracao, km, reais } from './util.js'
 
 const aprovacaoInicial = config => (config.exigirAprovacao ? 'pendente' : 'aprovado')
@@ -41,7 +41,7 @@ export function InicioCondutor({ usuario, ir }) {
             const pode = v.situacao === 'disponivel' && !aberto
             return (
               <button key={v.id} className="card veh" disabled={!pode} onClick={() => ir('/retirar/' + v.id)}>
-                <div className="car"><Car size={22} /></div>
+                <VeiculoImg veiculo={v} />
                 <div className="veh-txt"><b>{v.modelo} · {v.placa}</b><small>{uso ? `com ${quem?.nome.split(' ')[0]} desde ${dataHora(uso.inicio)}` : km(v.hodometro)}</small></div>
                 <Pill tipo="situacao" valor={v.situacao} />
               </button>

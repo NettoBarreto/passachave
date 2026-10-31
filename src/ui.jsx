@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { Camera, CheckCircle2, ChevronLeft, Monitor, Moon, Sun, X } from 'lucide-react'
+import { Camera, Car, CheckCircle2, ChevronLeft, Monitor, Moon, Sun, X } from 'lucide-react'
 import { db, lerConfig, salvarFoto } from './db.js'
 import { APROVACOES, SITUACOES } from './util.js'
 import { TEMAS, lerTema, salvarTema } from './tema.js'
@@ -95,6 +95,13 @@ export function useFoto(id) {
 export function FotoMini({ id }) {
   const url = useFoto(id)
   return url ? <img className="foto-mini" src={url} alt="" /> : null
+}
+
+// Foto cadastrada do veículo ou, sem foto, o ícone de carro.
+export function VeiculoImg({ veiculo, tamanho = '' }) {
+  const url = useFoto(veiculo?.foto)
+  if (url) return <img className={'veic-img ' + tamanho} src={url} alt={veiculo.modelo} />
+  return <div className={'car ' + (tamanho === 'mini' ? 'mini' : '')}><Car size={tamanho === 'mini' ? 17 : 22} /></div>
 }
 
 export function Foto({ id, rotulo }) {

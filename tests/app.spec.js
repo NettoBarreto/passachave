@@ -14,6 +14,13 @@ async function entrar(page, email) {
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
+async function comecarDoZero(page) {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Entrar no modo demonstração' }).click()
+  await page.getByRole('button', { name: 'Começar do zero' }).click()
+  await expect(page.locator('.ok-msg')).toContainText('zerado')
+}
+
 async function sair(page) {
   await page.getByRole('button', { name: 'Sair' }).locator('visible=true').first().click()
   await expect(page.locator('input[name=email]')).toBeVisible()
@@ -25,14 +32,15 @@ async function anexarFoto(page, indice) {
 }
 
 test('fluxo completo: retirada, abastecimento, ocorrência, devolução e aprovação', async ({ page }) => {
+  await comecarDoZero(page)
   await entrar(page, 'rafael@passachave.test')
   await expect(page.getByRole('heading', { name: 'Para onde vamos hoje?' })).toBeVisible()
 
   // Retirada com foto do hodômetro e verificação de saída
   await page.getByRole('button', { name: /Fiat Fiorino/ }).click()
-  await page.locator('input[name=finalidade]').fill('Entrega de cestas')
   await page.getByRole('button', { name: 'Continuar para a verificação' }).click()
-  await expect(page.getByRole('alert')).toContainText('foto do hodômetro')
+  await expect(page.getByRole('alert')).toContainText('finalidade')
+  await page.locator('input[name=finalidade]').fill('Entrega de cestas')
   await anexarFoto(page, 0)
   await page.getByRole('button', { name: 'Continuar para a verificação' }).click()
   await page.getByRole('button', { name: 'Nível 3' }).click()
@@ -112,14 +120,34 @@ test('cadastros e configurações da responsável', async ({ page }) => {
   await page.getByRole('button', { name: 'Novo usuário' }).click()
   const form = page.getByRole('dialog')
   await form.locator('input').nth(0).fill('Carla Dias')
-  await form.locator('input[type=email]').fill('carla@passachave.test')
+  await form.locator('input[type=email]').fill('bruna@passachave.test')
   await form.locator('input[type=password]').fill('senha123')
   await form.getByRole('button', { name: 'Salvar usuário' }).click()
-  await expect(page.getByText('carla@passachave.test')).toBeVisible()
+  await expect(page.getByText('bruna@passachave.test')).toBeVisible()
 
   await page.goto('/#/config')
   await page.getByRole('button', { name: 'fotoHodometro' }).click()
-  await expect(page.getByRole('button', { name: 'fotoHodometro' })).toHaveClass(/off/)
+  await expect(page.getByRole('button', { name: 'fotoHodometro' })).not.toHaveClass(/off/)
+})
+
+test('modo demonstração com dados simulados', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Entrar no modo demonstração' }).click()
+  await page.getByRole('button', { name: 'Dados simulados' }).click()
+  await expect(page.locator('.ok-msg')).toContainText('simulados')
+  await page.getByRole('button', { name: /Marina/ }).click()
+  await expect(page.getByRole('heading', { name: 'Painel da frota' })).toBeVisible()
+  await expect(page.getByText('Ana Souza · desde')).toBeVisible()
+  await expect(page.locator('.alert').first()).toBeVisible()
+  const pendentes = Number(await page.locator('.kpi', { hasText: 'Registros para aprovar' }).locator('b').textContent())
+  expect(pendentes).toBeGreaterThan(0)
+  await page.goto('/#/historico')
+  expect(await page.locator('.tbl tbody tr').count()).toBeGreaterThan(5)
+  await sair(page)
+  await page.getByRole('button', { name: 'Entrar no modo demonstração' }).click()
+  await page.getByRole('button', { name: /Rafael/ }).click()
+  await page.getByRole('button', { name: /Meus usos/ }).locator('visible=true').first().click()
+  await expect(page.locator('.recusado')).toBeVisible()
 })
 
 const ROTAS = ['/', '/#/painel', '/#/aprovar', '/#/veiculos', '/#/veiculo/1', '/#/usuarios', '/#/manutencao', '/#/historico', '/#/config', '/#/inicio', '/#/retirar/2', '/#/meus-usos']

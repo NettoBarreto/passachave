@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, Download, ExternalLink, FileText, Fuel, IdCard, KeyRound, Plus, Printer, ShieldCheck, Wrench } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Database, Eraser, CheckCircle2, ChevronLeft, Download, ExternalLink, FileText, Fuel, IdCard, KeyRound, Plus, Printer, ShieldCheck, Wrench } from 'lucide-react'
 import QRCode from 'qrcode'
 import { db, hashSenha, restaurarDemonstracao, salvarConfig } from './db.js'
-import { Foto, Modal, PageHeader, Pill, Vazio, useDados } from './ui.jsx'
+import { CampoFoto, Foto, Modal, PageHeader, Pill, Vazio, VeiculoImg, useDados } from './ui.jsx'
 import { NIVEIS_COMBUSTIVEL, baixarCsv, hoje, calcularAlertas, consumo, data, dataHora, duracao, km, mesmoMes, reais } from './util.js'
 
 const ICONES_ALERTA = { cnh: IdCard, documento: FileText, seguro: ShieldCheck, revisao: Wrench, agenda: CalendarClock, ocorrencia: AlertTriangle }
@@ -50,9 +50,9 @@ export function Painel({ ir }) {
               const uso = usos.find(u => u.veiculoId === v.id && u.status === 'aberto')
               return (
                 <tr key={v.id} className="clicavel" onClick={() => ir('/veiculo/' + v.id)}>
-                  <td><b>{v.modelo}</b> · {v.placa}</td>
+                  <td><span className="veic-cel"><VeiculoImg veiculo={v} tamanho="mini" /><span><b>{v.modelo}</b> · {v.placa}</span></span></td>
                   <td><Pill tipo="situacao" valor={v.situacao} /></td>
-                  <td>{uso ? `${nomeUsuario(usuarios, uso.condutorId)} · desde ${dataHora(uso.inicio)}` : <span className="muted">pátio</span>}</td>
+                  <td>{uso ? `${nomeUsuario(usuarios, uso.condutorId)} · desde ${dataHora(uso.inicio)}` : <span className="muted">{v.situacao === 'manutencao' ? 'oficina' : 'pátio'}</span>}</td>
                   <td>{km(v.hodometro)}</td>
                 </tr>
               )
@@ -171,7 +171,7 @@ export function Veiculos({ ir, novo }) {
         <tbody>
           {veiculos.map(v => (
             <tr key={v.id} className="clicavel" onClick={() => ir('/veiculo/' + v.id)}>
-              <td><b>{v.modelo}</b> · {v.placa}</td><td><Pill tipo="situacao" valor={v.situacao} /></td><td>{km(v.hodometro)}</td>
+              <td><span className="veic-cel"><VeiculoImg veiculo={v} tamanho="mini" /><span><b>{v.modelo}</b> · {v.placa}</span></span></td><td><Pill tipo="situacao" valor={v.situacao} /></td><td>{km(v.hodometro)}</td>
               <td>{data(v.licenciamento)}</td><td>{data(v.seguro)}</td><td>{usos.filter(u => u.veiculoId === v.id).length}</td>
             </tr>
           ))}
@@ -214,6 +214,7 @@ function FormVeiculo({ inicial, onFechar }) {
         <label className="campo"><span className="lbl">ou a cada (meses)</span><input className="inp" inputMode="numeric" value={f.revisaoMeses ?? ''} onChange={set('revisaoMeses')} /></label>
         <label className="campo"><span className="lbl">Última revisão (km)</span><input className="inp" inputMode="numeric" value={f.ultimaRevisaoKm ?? ''} onChange={set('ultimaRevisaoKm')} placeholder="hodômetro atual" /></label>
         <label className="campo"><span className="lbl">Data da última revisão</span><input className="inp" type="date" value={f.ultimaRevisaoData ?? ''} onChange={set('ultimaRevisaoData')} /></label>
+        <div style={{ gridColumn: '1 / -1' }}><CampoFoto rotulo="Foto do veículo (ajuda o condutor a escolher)" valor={f.foto || null} onChange={foto => setF({ ...f, foto })} /></div>
       </div>
       {erro && <div className="erro">{erro}</div>}
       <button className="btn pri" onClick={salvar}>Salvar veículo</button>
@@ -266,7 +267,7 @@ export function FichaVeiculo({ id, ir }) {
 
   return (
     <div className="page">
-      <div className="mtop"><div><button className="link" onClick={() => ir('/veiculos')}><ChevronLeft size={15} /> Veículos</button><h2>{v.modelo} · {v.placa}</h2><div className="muted">{km(v.hodometro)} · licenciamento até {data(v.licenciamento) || '?'} · seguro até {data(v.seguro) || '?'}</div></div>
+      <div className="mtop"><div><button className="link" onClick={() => ir('/veiculos')}><ChevronLeft size={15} /> Veículos</button><div className="veic-cel"><VeiculoImg veiculo={v} tamanho="grande" /><h2>{v.modelo} · {v.placa}</h2></div><div className="muted">{km(v.hodometro)} · licenciamento até {data(v.licenciamento) || '?'} · seguro até {data(v.seguro) || '?'}</div></div>
         <div className="chips"><Pill tipo="situacao" valor={v.situacao} /><button className="btn ghost sm" onClick={() => setEditando(true)}>Editar</button></div></div>
       <div className="kpis">
         <div className="kpi"><b>{kml ? kml.toFixed(1).replace('.', ',') + ' km/l' : 'sem dados'}</b><span>Consumo médio</span></div>
@@ -468,9 +469,10 @@ export function Configuracoes() {
   const { config, recarregar } = useDados()
   async function mudar(chave, valor) { await salvarConfig(chave, valor); await recarregar() }
   const Tog = ({ chave }) => <button className={'tog' + (config[chave] ? '' : ' off')} onClick={() => mudar(chave, !config[chave])} aria-label={chave} />
-  async function restaurar() {
-    if (!confirm('Apagar todos os registros deste navegador e voltar aos dados de demonstração?')) return
-    await restaurarDemonstracao()
+  async function restaurar(tipo) {
+    const texto = tipo === 'simulado' ? 'Substituir tudo por dados simulados de demonstração?' : 'Apagar todos os registros e começar do zero (ficam só as contas e os veículos de teste)?'
+    if (!confirm(texto)) return
+    await restaurarDemonstracao(tipo)
     location.reload()
   }
   return (
@@ -488,9 +490,12 @@ export function Configuracoes() {
         <div className="set"><span>Bloquear retirada com CNH vencida</span><Tog chave="bloquearCnhVencida" /></div>
       </div>
       <div className="panel">
-        <div className="lbl">Versão de teste</div>
+        <div className="lbl">Dados de demonstração</div>
         <p className="muted" style={{ margin: '6px 0 10px' }}>Nesta versão de teste os dados ficam guardados neste navegador. Cada pessoa que abre o link tem a própria cópia.</p>
-        <button className="btn ghost sm" onClick={restaurar}>Restaurar dados de demonstração</button>
+        <div className="chips">
+          <button className="btn pri sm" onClick={() => restaurar('simulado')}><Database size={15} /> Preencher com dados simulados</button>
+          <button className="btn ghost sm" onClick={() => restaurar('zero')}><Eraser size={15} /> Começar do zero</button>
+        </div>
       </div>
     </div>
   )

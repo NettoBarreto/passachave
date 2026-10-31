@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, ClipboardCheck, Clock, Gauge, History, Home, KeyRound, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, Wrench, Car, X } from 'lucide-react'
-import { db, hashSenha } from './db.js'
+import { Database, Eraser, PlayCircle, CheckCircle2, ClipboardCheck, Clock, Gauge, History, Home, KeyRound, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, Wrench, Car, X } from 'lucide-react'
+import { db, hashSenha, restaurarDemonstracao } from './db.js'
 import { BotaoTema, DadosProvider, useDados } from './ui.jsx'
 import { Abastecer, Devolucao, EmUso, InicioCondutor, MeusUsos, NovaOcorrencia, Retirada } from './condutor.jsx'
 import { Aprovar, Configuracoes, FichaVeiculo, Historico, Manutencao, Painel, Usuarios, Veiculos, contarPendentes } from './gestor.jsx'
@@ -45,7 +45,6 @@ function Login({ entrar }) {
     if (!u.ativo) return setErro('Seu acesso está bloqueado. Fale com a responsável.')
     entrar(u.id)
   }
-  const preencher = (e, s) => { setEmail(e); setSenha(s); setErro('') }
   return (
     <div className="login">
       <section className="login-lado">
@@ -63,6 +62,7 @@ function Login({ entrar }) {
       </section>
       <section className="login-form">
         <div className="login-topo"><BotaoTema /></div>
+        <div className="login-caixa">
         <form onSubmit={enviar}>
           <h2>Entrar</h2>
           <p className="muted">Use a conta cadastrada pela sua organização.</p>
@@ -70,18 +70,58 @@ function Login({ entrar }) {
           <label className="campo"><span className="lbl">Senha</span><input className="inp" name="senha" type="password" autoComplete="current-password" value={senha} onChange={e => setSenha(e.target.value)} /></label>
           {erro && <div className="erro" role="alert">{erro}</div>}
           <button className="btn nav" type="submit">Entrar</button>
-          <div className="teste">
-            <span><b>Versão de teste</b> · toque para preencher (senha <code>teste123</code>)</span>
-            <div className="chips">
-              <button type="button" className="chip" onClick={() => preencher('marina@passachave.test', 'teste123')}>Marina · responsável</button>
-              <button type="button" className="chip" onClick={() => preencher('rafael@passachave.test', 'teste123')}>Rafael · condutor</button>
-              <button type="button" className="chip" onClick={() => preencher('ana@passachave.test', 'teste123')}>Ana · condutora</button>
-              <button type="button" className="chip" onClick={() => preencher('paulo@passachave.test', 'teste123')}>Paulo · CNH vencendo</button>
-            </div>
-          </div>
-          <p className="muted centro">No celular, use "Adicionar à tela inicial" para instalar como aplicativo.</p>
         </form>
+        <Demonstracao entrar={entrar} />
+        <p className="muted centro">No celular, use "Adicionar à tela inicial" para instalar como aplicativo.</p>
+        </div>
       </section>
+    </div>
+  )
+}
+
+const PERFIS_DEMO = [
+  { email: 'marina@passachave.test', nome: 'Marina', papel: 'Responsável' },
+  { email: 'rafael@passachave.test', nome: 'Rafael', papel: 'Condutor' },
+  { email: 'ana@passachave.test', nome: 'Ana', papel: 'Condutora' },
+  { email: 'paulo@passachave.test', nome: 'Paulo', papel: 'CNH vencendo' }
+]
+
+// Modo demonstração: escolhe os dados (simulados ou do zero) e entra sem senha com um dos perfis de teste.
+function Demonstracao({ entrar }) {
+  const lerAviso = () => { try { return sessionStorage.getItem('passachave:aviso') || '' } catch { return '' } }
+  const [aberto, setAberto] = useState(() => Boolean(lerAviso()))
+  const [aviso] = useState(lerAviso)
+  const [preparando, setPreparando] = useState(false)
+  useEffect(() => { try { sessionStorage.removeItem('passachave:aviso') } catch { /* sem aviso */ } }, [])
+
+  async function preparar(tipo) {
+    setPreparando(true)
+    await restaurarDemonstracao(tipo)
+    try { sessionStorage.setItem('passachave:aviso', tipo === 'simulado' ? 'Dados simulados carregados.' : 'App zerado: só contas e veículos de teste.') } catch { /* segue */ }
+    location.reload()
+  }
+  async function entrarComo(email) {
+    const u = await db.usuarios.where('email').equals(email).first()
+    if (u) entrar(u.id)
+  }
+
+  if (!aberto) return (
+    <button className="demo-abrir" onClick={() => setAberto(true)}><PlayCircle size={18} /> Entrar no modo demonstração</button>
+  )
+  return (
+    <div className="demo">
+      <div className="row"><b>Modo demonstração</b><button className="link" onClick={() => setAberto(false)}>fechar</button></div>
+      <div className="lbl">1. Dados do app</div>
+      <div className="grid2">
+        <button className="btn ghost sm" disabled={preparando} onClick={() => preparar('simulado')}><Database size={15} /> Dados simulados</button>
+        <button className="btn ghost sm" disabled={preparando} onClick={() => preparar('zero')}><Eraser size={15} /> Começar do zero</button>
+      </div>
+      {aviso && <div className="ok-msg">{aviso}</div>}
+      <div className="lbl">2. Entrar como</div>
+      <div className="grid2">
+        {PERFIS_DEMO.map(p => <button key={p.email} className="chip perfil" onClick={() => entrarComo(p.email)}><b>{p.nome}</b><span>{p.papel}</span></button>)}
+      </div>
+      <p className="muted">Todas as contas de teste usam a senha <code>teste123</code>.</p>
     </div>
   )
 }
